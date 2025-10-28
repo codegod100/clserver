@@ -18,14 +18,5 @@
 
 ;; Build the worker
 (build-all)
+(register-api-routes)
 
-(format t "~%Build complete!~%")
-(format t "Worker:           worker.js~%")
-(format t "~%Deploy with:~%")
-(format t "  wrangler dev     # Local development~%")
-(format t "  wrangler deploy  # Deploy to Cloudflare~%")
-(format t "~%Test routes:~%")
-(format t "  /                # Home page~%")
-(format t "  /user/alice      # User profile~%")
-(format t "  /post/123        # Blog post~%")
-(format t "  /api/stats       # API statistics~%")

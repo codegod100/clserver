@@ -7,23 +7,100 @@
 ;; Global registry for API routes
 (defvar *api-routes* (make-hash-table :test 'equal))
 
-;; Registry of API definitions captured via DEFAPI
-(defvar *api-definitions* '())
+;; Helper function to extract parameters from URL patterns
+(defun extract-url-params (pattern path)
+  "Extract parameters from URL pattern like /users/:id from actual path"
+  (let ((pattern-parts (split-sequence #\/ pattern :remove-empty-subseqs t))
+        (path-parts (split-sequence #\/ path :remove-empty-subseqs t))
+        (params (make-hash-table :test 'equal)))
+    (when (= (length pattern-parts) (length path-parts))
+      (loop for pattern-part in pattern-parts
+            for path-part in path-parts
+            do (when (and (> (length pattern-part) 1)
+                          (char= (char pattern-part 0) #\:))
+                 (setf (gethash (subseq pattern-part 1) params) path-part)))
+      params)))
 
-;; Macro to capture API definitions for later generation
+;; Helper function to check if path matches pattern
+(defun path-matches-pattern (pattern path)
+  "Check if a path matches a URL pattern with parameters"
+  (let ((pattern-parts (split-sequence #\/ pattern :remove-empty-subseqs t))
+        (path-parts (split-sequence #\/ path :remove-empty-subseqs t)))
+    (and (= (length pattern-parts) (length path-parts))
+         (every (lambda (pattern-part path-part)
+                  (or (and (> (length pattern-part) 1)
+                           (char= (char pattern-part 0) #\:))
+                      (string= pattern-part path-part)))
+                pattern-parts path-parts))))
+
+;; Macro to generate API endpoints
 (defmacro defapi (resource-name &body routes)
-  "Capture API route specifications for later generation."
-  (let ((processed-routes
-          (mapcar (lambda (route)
-                    (destructuring-bind (method path handler) route
-                      (list :method (string-upcase (symbol-name method))
-                            :path path
-                            :handler handler)))
-                  routes)))
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (push (list :resource ',resource-name :routes ',processed-routes)
-             *api-definitions*)
-       ',resource-name)))
+  "Generate complete API endpoints for a resource
+  
+  Example:
+  (defapi user
+    (:get \"/users\" list-users)
+    (:post \"/users\" create-user)
+    (:get \"/users/:id\" get-user)
+    (:put \"/users/:id\" update-user)
+    (:delete \"/users/:id\" delete-user))"
+  (let ((resource-symbol (intern (string-upcase resource-name)))
+        (route-handlers '()))
+    
+    ;; Generate handler functions for each route
+    (dolist (route routes)
+      (let* ((method (first route))
+             (path (second route))
+             (handler-name (third route))
+             (method-str (string-upcase method))
+             (path-key (format nil "~a ~a" method-str path)))
+        
+        ;; Register the route
+        (setf (gethash path-key *api-routes*) handler-name)
+        
+        ;; Generate handler function
+        (push `(defun ,handler-name (request)
+                 (let* ((url (new ((@ self "URL") (@ request url))))
+                        (pathname (@ url pathname))
+                        (params (extract-url-params ,path pathname))
+                        (body (when (member ,method-str '("POST" "PUT" "PATCH") :test 'string=)
+                                (chain (request.json) (then (lambda (json) json))))))
+                   
+                   ;; Call the actual handler function
+                   (let ((result (funcall #',(intern (format nil "~a-~a" resource-symbol handler-name)) 
+                                          request params body)))
+                     (if (stringp result)
+                         (send-json result)
+                         (send-json (funcall (@ self "JSON" stringify) result))))))
+              route-handlers)))
+    
+    ;; Generate the main API handler
+    `(progn
+       ,@route-handlers
+       
+       ;; Register API routes in the main router
+       (defun register-api-routes ()
+         (maphash (lambda (route handler)
+                    (format t "Registered API route: ~a -> ~a~%" route handler))
+                  *api-routes*))
+       
+       ;; Generate route matching logic
+       (defun match-api-route (method path)
+         (let ((route-key (format nil "~a ~a" method path)))
+           (gethash route-key *api-routes*)))
+       
+       ;; Generate parameterized route matching
+       (defun match-api-route-with-params (method path)
+         (maphash (lambda (route-key handler)
+                    (let ((route-parts (split-sequence #\Space route-key)))
+                      (when (and (= (length route-parts) 2)
+                                 (string= (first route-parts) method))
+                        (let ((pattern (second route-parts)))
+                          (when (path-matches-pattern pattern path)
+                            (return-from match-api-route-with-params 
+                              (values handler (extract-url-params pattern path))))))))
+                  *api-routes*)
+         nil))))
 
 ;; =============================================================================
 ;; SAMPLE API IMPLEMENTATIONS
@@ -83,6 +160,52 @@
     (if user-id
         (create :message (format nil "User ~a deleted" user-id) :status "deleted")
         (create :error "User ID required" :status "error"))))
+
+;; =============================================================================
+;; PROFILING API IMPLEMENTATION
+;; =============================================================================
+
+;; Profiling resource implementation
+(defapi profile
+  (:post "/api/profile" profile-work))
+
+;; Profiling handler function
+(defun profile-profile-work (request params body)
+  "Profile work execution and return timing information"
+  (let ((start-time (funcall (@ self "Date" now)))
+        (work-result nil)
+        (end-time nil)
+        (execution-time nil))
+    
+    ;; Simulate some work based on request body
+    (let ((work-type (if body (gethash "work_type" body) "default"))
+          (work-duration (if body (gethash "duration" body) "1000")))
+      
+      ;; Convert duration to number if it's a string
+      (let ((duration-ms (if (stringp work-duration)
+                             (parse-integer work-duration :junk-allowed t)
+                             work-duration)))
+        (when (not duration-ms) (setf duration-ms 1000))
+        
+        ;; Simulate work with a delay
+        (funcall (@ self "setTimeout") 
+                 (lambda ()
+                   (setf work-result (create :work-type work-type
+                                            :duration duration-ms
+                                            :message "Work completed successfully")))
+                 duration-ms)
+        
+        ;; Calculate execution time
+        (setf end-time (funcall (@ self "Date" now)))
+        (setf execution-time (- end-time start-time))
+        
+        ;; Return profiling results
+        (create :result work-result
+                :timing (create :start-time start-time
+                               :end-time end-time
+                               :execution-time-ms execution-time
+                               :execution-time-seconds (/ execution-time 1000.0))
+                :status "profiled")))))
 
 ;; =============================================================================
 ;; MAIN PARENSCRIPT CLOUDFLARE WORKER WITH ROUTING
@@ -244,6 +367,33 @@
                          (create :message (+ "User " user-id " deleted") :status "deleted")
                          (create :error "User ID required" :status "error"))))
                  
+                ;; Profiling function (synchronous busy-wait to measure elapsed time)
+                (defun profile-work (request params body)
+                  (let ((work-type (if body (@ body "work_type") "default"))
+                        (work-duration (if body (@ body "duration") "1000")))
+                    (let ((duration-ms (if (stringp work-duration)
+                                           (funcall (@ self "parseInt") work-duration)
+                                           work-duration)))
+                      (when (not duration-ms) (setf duration-ms 1000))
+                      (let ((start-time (funcall (@ self "Date" now)))
+                            (end-time nil))
+                        ;; Busy-wait loop until the target time is reached
+                        (let ((target (+ start-time duration-ms)))
+                          (let ((now (funcall (@ self "Date" now))))
+                            (while (< now target)
+                                   (setf now (funcall (@ self "Date" now)))))
+                        (setf end-time (funcall (@ self "Date" now)))
+                        (let ((execution-time (- end-time start-time))
+                              (work-result (create :work-type work-type
+                                                   :duration duration-ms
+                                                   :message "Work completed successfully")))
+                          (create :result work-result
+                                  :timing (create :start-time start-time
+                                                  :end-time end-time
+                                                  :execution-time-ms execution-time
+                                                  :execution-time-seconds (/ execution-time 1000.0))
+                                  :status "profiled"))))))
+                 
                  ;; API handler functions
                  (defun list-users (request params body)
                    (let ((users (list (create :id 1 :name "Alice" :email "alice@example.com")
@@ -287,32 +437,6 @@
                          (create :message (+ "User " user-id " deleted") :status "deleted")
                          (create :error "User ID required" :status "error"))))
                  
-                 ;; Profiling function (synchronous busy-wait to measure elapsed time)
-                 (defun profile-work (request params body)
-                   (let ((work-type (if body (@ body "work_type") "default"))
-                         (work-duration (if body (@ body "duration") "1000")))
-                     (let ((duration-ms (if (stringp work-duration)
-                                            (funcall (@ self "parseInt") work-duration)
-                                            work-duration)))
-                       (when (not duration-ms) (setf duration-ms 1000))
-                       (let ((start-time (funcall (@ self "Date" now)))
-                             (end-time nil))
-                         (let ((target (+ start-time duration-ms)))
-                           (let ((now (funcall (@ self "Date" now))))
-                             (while (< now target)
-                                    (setf now (funcall (@ self "Date" now)))))
-                         (setf end-time (funcall (@ self "Date" now)))
-                         (let ((execution-time (- end-time start-time))
-                               (work-result (create :work-type work-type
-                                                    :duration duration-ms
-                                                    :message "Work completed successfully")))
-                           (create :result work-result
-                                   :timing (create :start-time start-time
-                                                   :end-time end-time
-                                                   :execution-time-ms execution-time
-                                                   :execution-time-seconds (/ execution-time 1000.0))
-                                   :status "profiled"))))))
-                 
                  ;; Simple API request handler
                  (defun handle-api-request (request)
                    (let* ((url (new ((@ self "URL") (@ request url))))
@@ -348,13 +472,13 @@
                               (if (stringp result)
                                   (send-json result)
                                   (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "profile-work")
-                            (chain (request.json)
-                                   (then (lambda (body)
-                                           (let ((result (profile-work request (create) body)))
-                                             (if (stringp result)
-                                                 (send-json result)
-                                                 (send-json (funcall (@ self "JSON" stringify) result))))))))
+                          ((= handler "profile-work")
+                           (chain (request.json)
+                                  (then (lambda (body)
+                                          (let ((result (profile-work request (create) body)))
+                                            (if (stringp result)
+                                                (send-json result)
+                                                (send-json (funcall (@ self "JSON" stringify) result))))))))
                            (t (send-error 404 "API endpoint not found")))
                          ;; Try to match parameterized routes
                          (let ((found-handler nil)
@@ -376,7 +500,7 @@
                                         (send-json result)
                                         (send-json (funcall (@ self "JSON" stringify) result)))))
                                  ((= found-handler "update-user")
-                                  (let ((body (when (member method '("POST" "PUT" "PATCH") :test 'string=)
+                                  (let ((body (when ((= method "POST") method '("POST" "PUT" "PATCH"))
                                                  (chain (request.json) (then (lambda (json) json))))))
                                     (let ((result (update-user request found-params body)))
                                       (if (stringp result)
@@ -387,6 +511,13 @@
                                     (if (stringp result)
                                         (send-json result)
                                         (send-json (funcall (@ self "JSON" stringify) result)))))
+                                 ((= found-handler "profile-work")
+                                  (chain (request.json)
+                                         (then (lambda (body)
+                                                 (let ((result (profile-work request found-params body)))
+                                                   (if (stringp result)
+                                                       (send-json result)
+                                                       (send-json (funcall (@ self "JSON" stringify) result)))))))
                                  (t (send-error 404 "API endpoint not found")))
                                (send-error 404 "API endpoint not found"))))))
                  
@@ -418,7 +549,7 @@
                  
                  ;; Cloudflare Worker event handler
                  (funcall (@ self "addEventListener") "fetch" (lambda (event)
-                                                                (funcall (@ event "respondWith") (handle-request (@ event request)))))))))
+                                                                (funcall (@ event "respondWith") (handle-request (@ event request))))))))))
     (with-open-file (stream "worker.js" :direction :output :if-exists :supersede)
       (write-string js-code stream))
     (format t "Generated worker.js successfully!~%")))
