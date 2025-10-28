@@ -51,22 +51,55 @@
         <h1>🚀 Dynamic Parenscript Cloudflare Worker</h1>
         <p>Visitor count: {{visitor_count}}</p>
 
-        <h2>Dynamic Routes:</h2>
+        <h2>🚀 Lisp-Powered API Endpoints:</h2>
         <div class="route">
-            <a href="/user/alice">👤 /user/alice</a> - User profile
+            <strong>GET</strong> <a href="/api/users">/api/users</a> - List all users
         </div>
         <div class="route">
-            <a href="/user/bob">👤 /user/bob</a> - Another user
+            <strong>POST</strong> /api/users - Create new user (JSON body)
         </div>
         <div class="route">
-            <a href="/post/123">📝 /post/123</a> - Blog post
+            <strong>GET</strong> <a href="/api/users/1">/api/users/:id</a> - Get user by ID
         </div>
         <div class="route">
-            <a href="/post/456">📝 /post/456</a> - Another post
+            <strong>PUT</strong> /api/users/:id - Update user (JSON body)
+        </div>
+        <div class="route">
+            <strong>DELETE</strong> /api/users/:id - Delete user
+        </div>
+        
+        <h2>📄 Legacy Routes:</h2>
+        <div class="route">
+            <a href="/user/alice">👤 /user/alice</a> - User profile page
+        </div>
+        <div class="route">
+            <a href="/post/123">📝 /post/123</a> - Blog post page
         </div>
         <div class="route">
             <a href="/api/stats">📊 /api/stats</a> - Server statistics
         </div>
+        
+        <h2>🧪 Test the API:</h2>
+        <div class="route">
+            <button onclick="testAPI()">Test User API</button>
+            <div id="api-result" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;"></div>
+        </div>
+        
+        <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Testing API...';
+            
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML = 'Error: ' + error.message;
+            }
+        }
+        </script>
     </div>
 </body>
 </html>

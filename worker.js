@@ -76,20 +76,166 @@ function handleApiStats() {
     __PS_MV_REG = [];
     return sendJson(jsonResponse);
 };
+if ('undefined' === typeof APIROUTES) {
+    var APIROUTES = {  };
+};
+function initApiRoutes() {
+    APIROUTES['GET /users'] = 'list-users';
+    APIROUTES['POST /users'] = 'create-user';
+    APIROUTES['GET /users/:id'] = 'get-user';
+    APIROUTES['PUT /users/:id'] = 'update-user';
+    return APIROUTES['DELETE /users/:id'] = 'delete-user';
+};
+function listUsers(request, params, body) {
+    var users = [{ 'id' : 1,
+                   'name' : 'Alice',
+                   'email' : 'alice@example.com'
+                 }, { 'id' : 2,
+                      'name' : 'Bob',
+                      'email' : 'bob@example.com'
+                    }, { 'id' : 3,
+                         'name' : 'Charlie',
+                         'email' : 'charlie@example.com'
+                       }];
+    return { 'users' : users,
+             'count' : users.length,
+             'status' : 'success'
+           };
+};
+function createUser(request, params, body) {
+    if (body) {
+        var newUser = { 'id' : 1 + self['Math'].floor(self['Math'].random() * 1000),
+                        'name' : body['name'],
+                        'email' : body['email'],
+                        'created-at' : self['Date'].now()
+                      };
+        return { 'user' : newUser, 'status' : 'created' };
+    } else {
+        return { 'error' : 'Missing user data', 'status' : 'error' };
+    };
+};
+function getUser(request, params, body) {
+    var userId = params['id'];
+    if (userId) {
+        var user = { 'id' : self['parseInt'](userId),
+                     'name' : 'Sample User',
+                     'email' : 'user@example.com',
+                     'created-at' : self['Date'].now()
+                   };
+        return { 'user' : user, 'status' : 'success' };
+    } else {
+        return { 'error' : 'User ID required', 'status' : 'error' };
+    };
+};
+function updateUser(request, params, body) {
+    var userId = params['id'];
+    if (userId && body) {
+        var updatedUser = { 'id' : self['parseInt'](userId),
+                            'name' : body['name'],
+                            'email' : body['email'],
+                            'updated-at' : self['Date'].now()
+                          };
+        return { 'user' : updatedUser, 'status' : 'updated' };
+    } else {
+        return { 'error' : 'User ID and data required', 'status' : 'error' };
+    };
+};
+function deleteUser(request, params, body) {
+    var userId = params['id'];
+    return userId ? { 'message' : 'User ' + userId + ' deleted', 'status' : 'deleted' } : { 'error' : 'User ID required', 'status' : 'error' };
+};
+function listUsers(request, params, body) {
+    var users = [{ 'id' : 1,
+                   'name' : 'Alice',
+                   'email' : 'alice@example.com'
+                 }, { 'id' : 2,
+                      'name' : 'Bob',
+                      'email' : 'bob@example.com'
+                    }, { 'id' : 3,
+                         'name' : 'Charlie',
+                         'email' : 'charlie@example.com'
+                       }];
+    return { 'users' : users,
+             'count' : users.length,
+             'status' : 'success'
+           };
+};
+function createUser(request, params, body) {
+    if (body) {
+        var newUser = { 'id' : 1 + self['Math'].floor(self['Math'].random() * 1000),
+                        'name' : body['name'],
+                        'email' : body['email'],
+                        'created-at' : self['Date'].now()
+                      };
+        return { 'user' : newUser, 'status' : 'created' };
+    } else {
+        return { 'error' : 'Missing user data', 'status' : 'error' };
+    };
+};
+function getUser(request, params, body) {
+    var userId = params['id'];
+    if (userId) {
+        var user = { 'id' : self['parseInt'](userId),
+                     'name' : 'Sample User',
+                     'email' : 'user@example.com',
+                     'created-at' : self['Date'].now()
+                   };
+        return { 'user' : user, 'status' : 'success' };
+    } else {
+        return { 'error' : 'User ID required', 'status' : 'error' };
+    };
+};
+function updateUser(request, params, body) {
+    var userId = params['id'];
+    if (userId && body) {
+        var updatedUser = { 'id' : self['parseInt'](userId),
+                            'name' : body['name'],
+                            'email' : body['email'],
+                            'updated-at' : self['Date'].now()
+                          };
+        return { 'user' : updatedUser, 'status' : 'updated' };
+    } else {
+        return { 'error' : 'User ID and data required', 'status' : 'error' };
+    };
+};
+function deleteUser(request, params, body) {
+    var userId = params['id'];
+    return userId ? { 'message' : 'User ' + userId + ' deleted', 'status' : 'deleted' } : { 'error' : 'User ID required', 'status' : 'error' };
+};
+function handleApiRequest(request) {
+    var url1 = new self['URL'](request.url);
+    var pathname2 = url1.pathname;
+    var method3 = request.method;
+    var routeKey = method3 + ' ' + pathname2;
+    var handler = APIROUTES.routeKey;
+    if (handler) {
+        var result = self.handler(request, {  }, member(method3, ['POST', 'PUT', 'PATCH']) ? request.json().then(function (json) {
+            return json;
+        }) : null);
+        __PS_MV_REG = [];
+        return typeof result === 'string' ? sendJson(result) : sendJson(self['JSON'].stringify(result));
+    } else {
+        __PS_MV_REG = [];
+        return sendError(404, 'API endpoint not found');
+    };
+};
 function handleRequest(request) {
-    var pathname1 = (new self['URL'](request.url)).pathname;
-    if (pathname1 === '/') {
+    var pathname4 = (new self['URL'](request.url)).pathname;
+    if (pathname4 === '/') {
         __PS_MV_REG = [];
         return handleRoot();
-    } else if (pathname1.length > 6 && pathname1.substring(0, 6) === '/user/') {
-        var username = pathname1.substring(6);
+    } else if (pathname4.length > 4 && pathname4.substring(0, 4) === '/api') {
+        __PS_MV_REG = [];
+        return handleApiRequest(request);
+    } else if (pathname4.length > 6 && pathname4.substring(0, 6) === '/user/') {
+        var username = pathname4.substring(6);
         __PS_MV_REG = [];
         return handleUser(username);
-    } else if (pathname1.length > 6 && pathname1.substring(0, 6) === '/post/') {
-        var postId = pathname1.substring(6);
+    } else if (pathname4.length > 6 && pathname4.substring(0, 6) === '/post/') {
+        var postId = pathname4.substring(6);
         __PS_MV_REG = [];
         return handlePost(postId);
-    } else if (pathname1 === '/api/stats') {
+    } else if (pathname4 === '/api/stats') {
         __PS_MV_REG = [];
         return handleApiStats();
     } else {
@@ -97,6 +243,7 @@ function handleRequest(request) {
         return sendError(404, 'Not Found');
     };
 };
+initApiRoutes();
 self['addEventListener']('fetch', function (event) {
     __PS_MV_REG = [];
     return event['respondWith'](handleRequest(event.request));
