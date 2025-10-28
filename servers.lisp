@@ -11,7 +11,8 @@
                                           :visitor_count "{{visitor_count}}")))
         (user-template (with-output-to-string (stream)
                          (render-template* "templates/user.html" stream
-                                          :username "{{username}}")))
+                                          :username "{{username}}"
+                                          :username_initial "{{username_initial}}")))
         (post-template (with-output-to-string (stream)
                          (render-template* "templates/post.html" stream
                                           :post_id "{{post_id}}"))))
@@ -58,7 +59,10 @@
                      (let ((html (substitute-template *user-template* 
                                                     "{{username}}" 
                                                     username)))
-                       (send-html res html)))
+                       (let ((html-with-avatar (substitute-template html 
+                                                                   "{{username_initial}}" 
+                                                                   (funcall (@ username char-at) 0))))
+                         (send-html res html-with-avatar))))
                    
                    (defun handle-post (req res post-id)
                      (let ((html (substitute-template *post-template* 
