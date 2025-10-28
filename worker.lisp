@@ -37,58 +37,12 @@
   (:put "/users/:id" update-user)
   (:delete "/users/:id" delete-user))
 
-;; User resource handler functions
-(defun user-list-users (request params body)
-  "List all users"
-  (let ((users (list (create :id 1 :name "Alice" :email "alice@example.com")
-                     (create :id 2 :name "Bob" :email "bob@example.com")
-                     (create :id 3 :name "Charlie" :email "charlie@example.com"))))
-    (create :users users :count (length users) :status "success")))
-
-(defun user-create-user (request params body)
-  "Create a new user"
-  (if body
-      (let ((new-user (create :id (+ 1 (random 1000))
-                              :name (gethash "name" body)
-                              :email (gethash "email" body)
-                              :created-at (funcall (@ self "Date" now)))))
-        (create :user new-user :status "created"))
-      (create :error "Missing user data" :status "error")))
-
-(defun user-get-user (request params body)
-  "Get a specific user by ID"
-  (let ((user-id (gethash "id" params)))
-    (if user-id
-        (let ((user (create :id (parse-integer user-id)
-                            :name "Sample User"
-                            :email "user@example.com"
-                            :created-at (funcall (@ self "Date" now)))))
-          (create :user user :status "success"))
-        (create :error "User ID required" :status "error"))))
-
-(defun user-update-user (request params body)
-  "Update a user by ID"
-  (let ((user-id (gethash "id" params)))
-    (if (and user-id body)
-        (let ((updated-user (create :id (parse-integer user-id)
-                                    :name (gethash "name" body)
-                                    :email (gethash "email" body)
-                                    :updated-at (funcall (@ self "Date" now)))))
-          (create :user updated-user :status "updated"))
-        (create :error "User ID and data required" :status "error"))))
-
-(defun user-delete-user (request params body)
-  "Delete a user by ID"
-  (let ((user-id (gethash "id" params)))
-    (if user-id
-        (create :message (format nil "User ~a deleted" user-id) :status "deleted")
-        (create :error "User ID required" :status "error"))))
-
 ;; =============================================================================
 ;; MAIN PARENSCRIPT CLOUDFLARE WORKER WITH ROUTING
 ;; =============================================================================
+
 (defun generate-worker ()
-  (let ((js-code (eval `(ps
+  (let ((js-code (ps
                  ;; Cloudflare Worker global state
                  (defvar *visitor-count* 0)
                  
@@ -102,104 +56,25 @@
                              (create :status 200
                                      :headers (create "content-type" "application/json")))))
                  
-                 (defun substitute-template (template placeholder value)
-                   (let ((parts (funcall (@ template split) placeholder)))
-                     (funcall (@ parts join) value)))
-                 
                  (defun send-error (status message)
                    (new ((@ self "Response") message
                              (create :status status
                                      :headers (create "content-type" "text/plain")))))
                  
-                 (defun load-template (template-name)
-                   (funcall (@ self "ASSETS" fetch) (new ((@ self "Request") (+ "https://example.com/" template-name)))))
-                 
                  (defun handle-root ()
                    (setf *visitor-count* (+ *visitor-count* 1))
-                   (chain (load-template "home.html")
-                          (then (lambda (template-response)
-                                  (if (@ template-response ok)
-                                      (chain (template-response.text)
-                                             (then (lambda (template)
-                                                     (let ((html (substitute-template template 
-                                                                                    "{{visitor_count}}" 
-                                                                                    (+ "" *visitor-count*))))
-                                                       (send-html html)))))
-                                      (send-error 500 "Template not found"))))))
-                 
-                 (defun handle-user (username)
-                   (chain (load-template "user.html")
-                          (then (lambda (template-response)
-                                  (if (@ template-response ok)
-                                      (chain (template-response.text)
-                                             (then (lambda (template)
-                                                     (let ((html (substitute-template template 
-                                                                                    "{{username}}" 
-                                                                                    username)))
-                                                       (let ((html-with-avatar (substitute-template html 
-                                                                                                   "{{username_initial}}" 
-                                                                                                   (funcall (@ username char-at) 0))))
-                                                         (send-html html-with-avatar))))))
-                                      (send-error 500 "Template not found"))))))
-                 
-                 (defun handle-post (post-id)
-                   (chain (load-template "post.html")
-                          (then (lambda (template-response)
-                                  (if (@ template-response ok)
-                                      (chain (template-response.text)
-                                             (then (lambda (template)
-                                                     (let ((html (substitute-template template 
-                                                                                    "{{post_id}}" 
-                                                                                    post-id)))
-                                                       (send-html html)))))
-                                      (send-error 500 "Template not found"))))))
+                   (let ((html (+ "<!DOCTYPE html><html><head><title>Parenscript Worker</title></head><body>"
+                                  "<h1>Welcome to Parenscript Cloudflare Worker</h1>"
+                                  "<p>Visitor count: " *visitor-count* "</p>"
+                                  "<p>Server: Parenscript Cloudflare Worker</p>"
+                                  "</body></html>")))
+                     (send-html html)))
                  
                  (defun handle-api-stats ()
                    (let ((json-response (+ "{\"visitor-count\":" *visitor-count* 
                                            ",\"server\":\"Parenscript Cloudflare Worker\""
                                            ",\"timestamp\":" (funcall (@ self "Date" now)) "}")))
                      (send-json json-response)))
-                 
-                 ;; Simple API route registry
-                 (defvar *api-routes* (create))
-                 
-                 ;; Initialize API routes
-                 (defun init-api-routes ()
-                   (setf (@ *api-routes* "GET /api/users") "list-users")
-                   (setf (@ *api-routes* "POST /api/users") "create-user")
-                   (setf (@ *api-routes* "GET /api/users/:id") "get-user")
-                   (setf (@ *api-routes* "PUT /api/users/:id") "update-user")
-                   (setf (@ *api-routes* "DELETE /api/users/:id") "delete-user")
-                   (setf (@ *api-routes* "POST /api/profile") "profile-work"))
-                 
-                 ;; Helper function to check if path matches pattern
-                 (defun path-matches-pattern (pattern path)
-                   (let ((pattern-parts (funcall (@ pattern split) "/"))
-                         (path-parts (funcall (@ path split) "/"))
-                         (matches true))
-                     (when (= (@ pattern-parts length) (@ path-parts length))
-                       (loop for i from 0 below (@ pattern-parts length)
-                             do (let ((pattern-part (aref pattern-parts i))
-                                      (path-part (aref path-parts i)))
-                                  (when (not (or (and (> (@ pattern-part length) 1)
-                                                      (= (funcall (@ pattern-part char-at) 0) ":"))
-                                                 (= pattern-part path-part)))
-                                    (setf matches false))))
-                       matches)))
-                 
-                 ;; Helper function to extract URL parameters
-                 (defun extract-url-params (pattern path)
-                   (let ((pattern-parts (funcall (@ pattern split) "/"))
-                         (path-parts (funcall (@ path split) "/"))
-                         (params (create)))
-                     (when (= (@ pattern-parts length) (@ path-parts length))
-                       (loop for i from 0 below (@ pattern-parts length)
-                             do (let ((pattern-part (aref pattern-parts i))
-                                      (path-part (aref path-parts i)))
-                                  (when (and (> (@ pattern-part length) 1)
-                                             (= (funcall (@ pattern-part char-at) 0) ":"))
-                                    (setf (@ params (funcall (@ pattern-part substring) 1)) path-part))))
-                       params)))
                  
                  ;; Simple API handler functions
                  (defun list-users (request params body)
@@ -244,181 +119,54 @@
                          (create :message (+ "User " user-id " deleted") :status "deleted")
                          (create :error "User ID required" :status "error"))))
                  
-                 ;; API handler functions
-                 (defun list-users (request params body)
-                   (let ((users (list (create :id 1 :name "Alice" :email "alice@example.com")
-                                      (create :id 2 :name "Bob" :email "bob@example.com")
-                                      (create :id 3 :name "Charlie" :email "charlie@example.com"))))
-                     (create :users users :count (@ users length) :status "success")))
-                 
-                 (defun create-user (request params body)
-                   (if body
-                       (let ((new-user (create :id (+ 1 (funcall (@ self "Math" floor) 
-                                                                  (* (funcall (@ self "Math" random)) 1000)))
-                                               :name (@ body "name")
-                                               :email (@ body "email")
-                                               :created-at (funcall (@ self "Date" now)))))
-                         (create :user new-user :status "created"))
-                       (create :error "Missing user data" :status "error")))
-                 
-                 (defun get-user (request params body)
-                   (let ((user-id (@ params "id")))
-                     (if user-id
-                         (let ((user (create :id (funcall (@ self "parseInt") user-id)
-                                             :name "Sample User"
-                                             :email "user@example.com"
-                                             :created-at (funcall (@ self "Date" now)))))
-                           (create :user user :status "success"))
-                         (create :error "User ID required" :status "error"))))
-                 
-                 (defun update-user (request params body)
-                   (let ((user-id (@ params "id")))
-                     (if (and user-id body)
-                         (let ((updated-user (create :id (funcall (@ self "parseInt") user-id)
-                                                     :name (@ body "name")
-                                                     :email (@ body "email")
-                                                     :updated-at (funcall (@ self "Date" now)))))
-                           (create :user updated-user :status "updated"))
-                         (create :error "User ID and data required" :status "error"))))
-                 
-                 (defun delete-user (request params body)
-                   (let ((user-id (@ params "id")))
-                     (if user-id
-                         (create :message (+ "User " user-id " deleted") :status "deleted")
-                         (create :error "User ID required" :status "error"))))
-                 
-                 ;; Profiling function (synchronous busy-wait to measure elapsed time)
-                 (defun profile-work (request params body)
-                   (let ((work-type (if body (@ body "work_type") "default"))
-                         (work-duration (if body (@ body "duration") "1000")))
-                     (let ((duration-ms (if (stringp work-duration)
-                                            (funcall (@ self "parseInt") work-duration)
-                                            work-duration)))
-                       (when (not duration-ms) (setf duration-ms 1000))
-                       (let ((start-time (funcall (@ self "Date" now)))
-                             (end-time nil))
-                         (let ((target (+ start-time duration-ms)))
-                           (let ((now (funcall (@ self "Date" now))))
-                             (while (< now target)
-                                    (setf now (funcall (@ self "Date" now)))))
-                         (setf end-time (funcall (@ self "Date" now)))
-                         (let ((execution-time (- end-time start-time))
-                               (work-result (create :work-type work-type
-                                                    :duration duration-ms
-                                                    :message "Work completed successfully")))
-                           (create :result work-result
-                                   :timing (create :start-time start-time
-                                                   :end-time end-time
-                                                   :execution-time-ms execution-time
-                                                   :execution-time-seconds (/ execution-time 1000.0))
-                                   :status "profiled"))))))
-                 
                  ;; Simple API request handler
                  (defun handle-api-request (request)
                    (let* ((url (new ((@ self "URL") (@ request url))))
                           (pathname (@ url pathname))
-                          (method (@ request method))
-                          (route-key (+ method " " pathname))
-                          (handler (aref *api-routes* route-key)))
-                     (if handler
-                         ;; Direct route match
-                         (cond
-                           ((= handler "list-users")
-                            (let ((result (list-users request (create) nil)))
-                              (if (stringp result)
-                                  (send-json result)
-                                  (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "create-user")
-                            (let ((result (create-user request (create) nil)))
-                              (if (stringp result)
-                                  (send-json result)
-                                  (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "get-user")
-                            (let ((result (get-user request (create) nil)))
-                              (if (stringp result)
-                                  (send-json result)
-                                  (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "update-user")
-                            (let ((result (update-user request (create) nil)))
-                              (if (stringp result)
-                                  (send-json result)
-                                  (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "delete-user")
-                            (let ((result (delete-user request (create) nil)))
-                              (if (stringp result)
-                                  (send-json result)
-                                  (send-json (funcall (@ self "JSON" stringify) result)))))
-                           ((= handler "profile-work")
-                            (chain (request.json)
-                                   (then (lambda (body)
-                                           (let ((result (profile-work request (create) body)))
-                                             (if (stringp result)
-                                                 (send-json result)
-                                                 (send-json (funcall (@ self "JSON" stringify) result))))))))
-                           (t (send-error 404 "API endpoint not found")))
-                         ;; Try to match parameterized routes
-                         (let ((found-handler nil)
-                               (found-params (create)))
-                           (loop for route-key in (funcall (@ self "Object" keys) *api-routes*)
-                                 do (let ((route-parts (funcall (@ route-key split) " ")))
-                                      (when (and (= (@ route-parts length) 2)
-                                                 (= (aref route-parts 0) method))
-                                        (let ((pattern (aref route-parts 1)))
-                                          (when (path-matches-pattern pattern pathname)
-                                            (setf found-handler (aref *api-routes* route-key))
-                                            (setf found-params (extract-url-params pattern pathname))
-                                            (return))))))
-                           (if found-handler
-                               (cond
-                                 ((= found-handler "get-user")
-                                  (let ((result (get-user request found-params nil)))
-                                    (if (stringp result)
-                                        (send-json result)
-                                        (send-json (funcall (@ self "JSON" stringify) result)))))
-                                 ((= found-handler "update-user")
-                                  (let ((body (when (member method '("POST" "PUT" "PATCH") :test 'string=)
-                                                 (chain (request.json) (then (lambda (json) json))))))
-                                    (let ((result (update-user request found-params body)))
-                                      (if (stringp result)
-                                          (send-json result)
-                                          (send-json (funcall (@ self "JSON" stringify) result))))))
-                                 ((= found-handler "delete-user")
-                                  (let ((result (delete-user request found-params nil)))
-                                    (if (stringp result)
-                                        (send-json result)
-                                        (send-json (funcall (@ self "JSON" stringify) result)))))
-                                 (t (send-error 404 "API endpoint not found")))
-                               (send-error 404 "API endpoint not found"))))))
+                          (method (@ request method)))
+                     (cond
+                       ((and (= method "GET") (= pathname "/api/users"))
+                        (let ((result (list-users request (create) nil)))
+                          (send-json (funcall (@ self "JSON" stringify) result))))
+                       ((and (= method "POST") (= pathname "/api/users"))
+                        (chain (request.json)
+                               (then (lambda (body)
+                                       (let ((result (create-user request (create) body)))
+                                         (send-json (funcall (@ self "JSON" stringify) result)))))))
+                       ((and (= method "GET") (and (> (@ pathname length) 8) (= (funcall (@ pathname substring) 0 8) "/api/users/")))
+                        (let ((user-id (funcall (@ pathname substring) 9))
+                              (params (create :id user-id)))
+                          (let ((result (get-user request params nil)))
+                            (send-json (funcall (@ self "JSON" stringify) result)))))
+                       ((and (= method "PUT") (and (> (@ pathname length) 8) (= (funcall (@ pathname substring) 0 8) "/api/users/")))
+                        (let ((user-id (funcall (@ pathname substring) 9))
+                              (params (create :id user-id)))
+                          (chain (request.json)
+                                 (then (lambda (body)
+                                         (let ((result (update-user request params body)))
+                                           (send-json (funcall (@ self "JSON" stringify) result))))))))
+                       ((and (= method "DELETE") (and (> (@ pathname length) 8) (= (funcall (@ pathname substring) 0 8) "/api/users/")))
+                        (let ((user-id (funcall (@ pathname substring) 9))
+                              (params (create :id user-id)))
+                          (let ((result (delete-user request params nil)))
+                            (send-json (funcall (@ self "JSON" stringify) result)))))
+                       (t (send-error 404 "API endpoint not found")))))
                  
                  (defun handle-request (request)
                    (let ((pathname (@ (new ((@ self "URL") (@ request url))) pathname)))
                      (cond
                        ((= pathname "/")
                         (handle-root))
-                       
                        ((and (> (@ pathname length) 4) (= (funcall (@ pathname substring) 0 4) "/api"))
                         (handle-api-request request))
-                       
-                       ((and (> (@ pathname length) 6) (= (funcall (@ pathname substring) 0 6) "/user/"))
-                        (let ((username (funcall (@ pathname substring) 6)))
-                          (handle-user username)))
-                       
-                       ((and (> (@ pathname length) 6) (= (funcall (@ pathname substring) 0 6) "/post/"))
-                        (let ((post-id (funcall (@ pathname substring) 6)))
-                          (handle-post post-id)))
-                       
                        ((= pathname "/api/stats")
                         (handle-api-stats))
-                       
                        (t
                         (send-error 404 "Not Found")))))
                  
-                 ;; Initialize API routes on startup
-                 (init-api-routes)
-                 
                  ;; Cloudflare Worker event handler
                  (funcall (@ self "addEventListener") "fetch" (lambda (event)
-                                                                (funcall (@ event "respondWith") (handle-request (@ event request)))))))))
+                                                                (funcall (@ event "respondWith") (handle-request (@ event request))))))))
     (with-open-file (stream "worker.js" :direction :output :if-exists :supersede)
       (write-string js-code stream))
     (format t "Generated worker.js successfully!~%")))

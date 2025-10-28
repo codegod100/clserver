@@ -18,5 +18,4 @@
 
 ;; Build the worker
 (build-all)
-(register-api-routes)
 
