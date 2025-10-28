@@ -8,13 +8,13 @@
   ;; Generate HTML templates with placeholders for dynamic content
   (let ((home-template (with-output-to-string (stream)
                          (render-template* "templates/home.html" stream
-                                          :visitor_count "{{VISITOR_COUNT}}")))
+                                          :visitor_count "{{visitor_count}}")))
         (user-template (with-output-to-string (stream)
                          (render-template* "templates/user.html" stream
-                                          :username "{{USERNAME}}")))
+                                          :username "{{username}}")))
         (post-template (with-output-to-string (stream)
                          (render-template* "templates/post.html" stream
-                                          :post_id "{{POST_ID}}"))))
+                                          :post_id "{{post_id}}"))))
     
     (let ((js-code (eval `(ps
                    (defvar *http* (require "http"))
@@ -38,7 +38,8 @@
                      (res.end json-string))
                    
                    (defun substitute-template (template placeholder value)
-                     (funcall (@ template replace) (ps-inline "new RegExp(placeholder, 'g')") value))
+                     (let ((parts (funcall (@ template split) placeholder)))
+                       (funcall (@ parts join) value)))
                    
                    
                    (defun send-error (res status message)
@@ -49,19 +50,19 @@
                    (defun handle-root (req res)
                      (setf *visitor-count* (+ *visitor-count* 1))
                      (let ((html (substitute-template *home-template* 
-                                                    "{{VISITOR_COUNT}}" 
+                                                    "{{visitor_count}}" 
                                                     (+ "" *visitor-count*))))
                        (send-html res html)))
                    
                    (defun handle-user (req res username)
                      (let ((html (substitute-template *user-template* 
-                                                    "{{USERNAME}}" 
+                                                    "{{username}}" 
                                                     username)))
                        (send-html res html)))
                    
                    (defun handle-post (req res post-id)
                      (let ((html (substitute-template *post-template* 
-                                                    "{{POST_ID}}" 
+                                                    "{{post_id}}" 
                                                     post-id)))
                        (send-html res html)))
                    
