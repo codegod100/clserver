@@ -145,6 +145,7 @@
                      (+ "<div class=\"api-section\">"
                         "<h2>🔗 Available API Endpoints</h2>"
                         (render-api-endpoint "GET" "/api/stats" "Get server statistics and visitor count" (+ "curl " origin "/api/stats"))
+                        (render-api-endpoint "GET" "/api/work" "Process work and return timing information" (+ "curl " origin "/api/work"))
                         (render-api-endpoint "GET" "/api/users" "List all users" (+ "curl " origin "/api/users"))
                         (render-api-endpoint "POST" "/api/users" "Create a new user" (+ "curl -X POST " origin "/api/users -H \"Content-Type: application/json\" -d '{\"name\":\"John Doe\",\"email\":\"john@example.com\"}'"))
                         (render-api-endpoint "GET" "/api/users/:id" "Get a specific user by ID" (+ "curl " origin "/api/users/1"))
@@ -169,6 +170,7 @@
                       "<p>Use the curl commands above to test the API endpoints, or visit:</p>"
                       "<ul>"
                       "<li><a href=\"/api/stats\" target=\"_blank\">/api/stats</a> - Server statistics</li>"
+                      "<li><a href=\"/api/work\" target=\"_blank\">/api/work</a> - Process work with timing</li>"
                       "<li><a href=\"/api/users\" target=\"_blank\">/api/users</a> - List users</li>"
                       "</ul>"
                       "</div>"))
@@ -245,6 +247,25 @@
                          (create :message (+ "User " user-id " deleted") :status "deleted")
                          (create :error "User ID required" :status "error"))))
                  
+                 (defun process-work (request params body)
+                   "Process some work and return timing information"
+                   (let* ((start-time (funcall (@ self "Date" now)))
+                          (work-result (simulate-work))
+                          (end-time (funcall (@ self "Date" now)))
+                          (duration (- end-time start-time)))
+                     (create :result work-result
+                             :duration-ms duration
+                             :start-time start-time
+                             :end-time end-time
+                             :status "completed")))
+                 
+                 (defun simulate-work ()
+                   "Simulate some CPU-intensive work"
+                   (let ((result 0))
+                     (dotimes (i 1000000)
+                       (setf result (+ result i)))
+                     result))
+                 
                  ;; Simple API request handler
                  (defun handle-api-request (request)
                    (let* ((url (new ((@ self "URL") (@ request url))))
@@ -261,6 +282,9 @@
                      (funcall (@ self "console" log) (+ "Substring equals '/api/users/': " (= (funcall (@ pathname substring) 0 11) "/api/users/")))
                      (funcall (@ self "console" log) (+ "Full condition: " (and (= method "GET") (and (> (@ pathname length) 10) (= (funcall (@ pathname substring) 0 11) "/api/users/")))))
                          (cond
+                       ((and (= method "GET") (= pathname "/api/work"))
+                        (let ((result (process-work request (create) nil)))
+                          (send-json (funcall (@ self "JSON" stringify) result))))
                        ((and (= method "GET") (= pathname "/api/users"))
                             (let ((result (list-users request (create) nil)))
                           (send-json (funcall (@ self "JSON" stringify) result))))
@@ -298,6 +322,9 @@
                         (handle-root request))
                        ((= pathname "/api/stats")
                         (handle-api-stats))
+                       ((= pathname "/api/work")
+                        (let ((result (process-work request (create) nil)))
+                          (send-json (funcall (@ self "JSON" stringify) result))))
                        ((and (> (@ pathname length) 4) (= (funcall (@ pathname substring) 0 4) "/api"))
                         (handle-api-request request))
                        (t
