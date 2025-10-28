@@ -10,7 +10,7 @@
 
 ;; Load our files directly
 (load "package.lisp")
-(load "servers.lisp")
+(load "worker.lisp")
 
 (in-package :clserver)
 

@@ -80,11 +80,43 @@ if ('undefined' === typeof APIROUTES) {
     var APIROUTES = {  };
 };
 function initApiRoutes() {
-    APIROUTES['GET /users'] = 'list-users';
-    APIROUTES['POST /users'] = 'create-user';
-    APIROUTES['GET /users/:id'] = 'get-user';
-    APIROUTES['PUT /users/:id'] = 'update-user';
-    return APIROUTES['DELETE /users/:id'] = 'delete-user';
+    APIROUTES['GET /api/users'] = 'list-users';
+    APIROUTES['POST /api/users'] = 'create-user';
+    APIROUTES['GET /api/users/:id'] = 'get-user';
+    APIROUTES['PUT /api/users/:id'] = 'update-user';
+    return APIROUTES['DELETE /api/users/:id'] = 'delete-user';
+};
+function pathMatchesPattern(pattern, path) {
+    var patternParts = pattern.split('/');
+    var pathParts = path.split('/');
+    var matches = true;
+    if (patternParts.length === pathParts.length) {
+        var _js2 = patternParts.length;
+        for (var i = 0; i < _js2; i += 1) {
+            var patternPart = patternParts[i];
+            var pathPart = pathParts[i];
+            if (!(patternPart.length > 1 && patternPart.charAt(0) === ':' || patternPart === pathPart)) {
+                matches = false;
+            };
+        };
+        return matches;
+    };
+};
+function extractUrlParams(pattern, path) {
+    var patternParts = pattern.split('/');
+    var pathParts = path.split('/');
+    var params = {  };
+    if (patternParts.length === pathParts.length) {
+        var _js4 = patternParts.length;
+        for (var i = 0; i < _js4; i += 1) {
+            var patternPart = patternParts[i];
+            var pathPart = pathParts[i];
+            if (patternPart.length > 1 && patternPart.charAt(0) === ':') {
+                params[patternPart.substring(1)] = pathPart;
+            };
+        };
+        return params;
+    };
 };
 function listUsers(request, params, body) {
     var users = [{ 'id' : 1,
@@ -203,39 +235,99 @@ function deleteUser(request, params, body) {
     return userId ? { 'message' : 'User ' + userId + ' deleted', 'status' : 'deleted' } : { 'error' : 'User ID required', 'status' : 'error' };
 };
 function handleApiRequest(request) {
-    var url1 = new self['URL'](request.url);
-    var pathname2 = url1.pathname;
-    var method3 = request.method;
-    var routeKey = method3 + ' ' + pathname2;
-    var handler = APIROUTES.routeKey;
+    var url5 = new self['URL'](request.url);
+    var pathname6 = url5.pathname;
+    var method7 = request.method;
+    var routeKey = method7 + ' ' + pathname6;
+    var handler = APIROUTES[routeKey];
     if (handler) {
-        var result = self.handler(request, {  }, member(method3, ['POST', 'PUT', 'PATCH']) ? request.json().then(function (json) {
-            return json;
-        }) : null);
-        __PS_MV_REG = [];
-        return typeof result === 'string' ? sendJson(result) : sendJson(self['JSON'].stringify(result));
+        if (handler === 'list-users') {
+            var result = listUsers(request, {  }, null);
+            __PS_MV_REG = [];
+            return typeof result === 'string' ? sendJson(result) : sendJson(self['JSON'].stringify(result));
+        } else if (handler === 'create-user') {
+            var result8 = createUser(request, {  }, null);
+            __PS_MV_REG = [];
+            return typeof result8 === 'string' ? sendJson(result8) : sendJson(self['JSON'].stringify(result8));
+        } else if (handler === 'get-user') {
+            var result9 = getUser(request, {  }, null);
+            __PS_MV_REG = [];
+            return typeof result9 === 'string' ? sendJson(result9) : sendJson(self['JSON'].stringify(result9));
+        } else if (handler === 'update-user') {
+            var result10 = updateUser(request, {  }, null);
+            __PS_MV_REG = [];
+            return typeof result10 === 'string' ? sendJson(result10) : sendJson(self['JSON'].stringify(result10));
+        } else if (handler === 'delete-user') {
+            var result11 = deleteUser(request, {  }, null);
+            __PS_MV_REG = [];
+            return typeof result11 === 'string' ? sendJson(result11) : sendJson(self['JSON'].stringify(result11));
+        } else {
+            __PS_MV_REG = [];
+            return sendError(404, 'API endpoint not found');
+        };
     } else {
-        __PS_MV_REG = [];
-        return sendError(404, 'API endpoint not found');
+        var foundHandler = null;
+        var foundParams = {  };
+        nilBlock: {
+            var _js12 = self['Object'].keys(APIROUTES);
+            var _js14 = _js12.length;
+            for (var _js13 = 0; _js13 < _js14; _js13 += 1) {
+                var routeKey15 = _js12[_js13];
+                var routeParts = routeKey15.split(' ');
+                if (routeParts.length === 2 && routeParts[0] === method7) {
+                    var pattern = routeParts[1];
+                    if (pathMatchesPattern(pattern, pathname6)) {
+                        foundHandler = APIROUTES[routeKey15];
+                        foundParams = extractUrlParams(pattern, pathname6);
+                        __PS_MV_REG = [];
+                        break nilBlock;
+                    };
+                };
+            };
+        };
+        if (foundHandler) {
+            if (foundHandler === 'get-user') {
+                var result15 = getUser(request, foundParams, null);
+                __PS_MV_REG = [];
+                return typeof result15 === 'string' ? sendJson(result15) : sendJson(self['JSON'].stringify(result15));
+            } else if (foundHandler === 'update-user') {
+                var body = (method7 === 'POST')(method7, ['POST', 'PUT', 'PATCH']) ? request.json().then(function (json) {
+                    return json;
+                }) : null;
+                var result16 = updateUser(request, foundParams, body);
+                __PS_MV_REG = [];
+                return typeof result16 === 'string' ? sendJson(result16) : sendJson(self['JSON'].stringify(result16));
+            } else if (foundHandler === 'delete-user') {
+                var result17 = deleteUser(request, foundParams, null);
+                __PS_MV_REG = [];
+                return typeof result17 === 'string' ? sendJson(result17) : sendJson(self['JSON'].stringify(result17));
+            } else {
+                __PS_MV_REG = [];
+                return sendError(404, 'API endpoint not found');
+            };
+        } else {
+            __PS_MV_REG = [];
+            return sendError(404, 'API endpoint not found');
+        };
     };
 };
 function handleRequest(request) {
-    var pathname4 = (new self['URL'](request.url)).pathname;
-    if (pathname4 === '/') {
+    var pathname18 = (new self['URL'](request.url)).pathname;
+    if (pathname18 === '/') {
         __PS_MV_REG = [];
         return handleRoot();
-    } else if (pathname4.length > 4 && pathname4.substring(0, 4) === '/api') {
+    } else if (pathname18.length > 4 && pathname18.substring(0, 4) === '/api') {
         __PS_MV_REG = [];
         return handleApiRequest(request);
-    } else if (pathname4.length > 6 && pathname4.substring(0, 6) === '/user/') {
-        var username = pathname4.substring(6);
+    } else if (pathname18.length > 6 && pathname18.substring(0, 6) === '/user/') {
+        var username = pathname18.substring(6);
         __PS_MV_REG = [];
         return handleUser(username);
-    } else if (pathname4.length > 6 && pathname4.substring(0, 6) === '/post/') {
-        var postId = pathname4.substring(6);
+    } else if (pathname18.length > 6 && pathname18.substring(0, 6) === '/post/') {
+        var postId = pathname18.substring(6);
         __PS_MV_REG = [];
         return handlePost(postId);
-    } else if (pathname4 === '/api/stats') {
+    } else if (pathname18 === '/api/stats') {
         __PS_MV_REG = [];
         return handleApiStats();
     } else {

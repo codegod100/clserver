@@ -4,7 +4,10 @@ A dynamic Cloudflare Worker with routing generated using Parenscript from Common
 
 ## Features
 
+- **Lisp-Powered API Generation**: `defapi` macro generates complete CRUD endpoints
 - **Dynamic Routing**: Handles `/user/{username}`, `/post/{id}`, and API endpoints
+- **Parameter Extraction**: Automatic URL parameter parsing (e.g., `/users/:id`)
+- **JSON API**: Full REST API with automatic JSON serialization
 - **Static Assets**: Serves HTML templates as static assets for better performance
 - **Template Processing**: Simple string substitution for dynamic content
 - **Code Generation**: Generates JavaScript from Common Lisp using Parenscript
@@ -12,7 +15,7 @@ A dynamic Cloudflare Worker with routing generated using Parenscript from Common
 
 ## Project Structure
 
-- `servers.lisp` - Main Parenscript code that generates the Cloudflare Worker
+- `worker.lisp` - Main Parenscript code that generates the Cloudflare Worker
 - `build.lisp` - Build script that loads dependencies and generates the worker
 - `package.lisp` - Package definition for the clserver package
 - `wrangler.toml` - Cloudflare Worker configuration
@@ -65,9 +68,17 @@ pnpm run deploy
 
 ## Routes
 
-- `/` - Home page with visitor counter
+### Web Pages
+- `/` - Home page with visitor counter and API testing interface
 - `/user/{username}` - User profile page
 - `/post/{id}` - Blog post page
+
+### API Endpoints
+- `/api/users` - List all users (GET)
+- `/api/users` - Create new user (POST)
+- `/api/users/{id}` - Get user by ID (GET)
+- `/api/users/{id}` - Update user (PUT)
+- `/api/users/{id}` - Delete user (DELETE)
 - `/api/stats` - JSON API with statistics
 
 ## Architecture
