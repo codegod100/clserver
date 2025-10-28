@@ -1,0 +1,13 @@
+{
+  "name": "parenscript-web-server",
+  "version": "1.0.0",
+  "description": "A dynamic Node.js web server with routing generated using Parenscript from Common Lisp",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "sbcl --script build.lisp"
+  },
+  "keywords": ["parenscript", "web-server", "nodejs", "common-lisp", "code-generation", "routing", "dynamic"],
+  "author": "Your Name",
+  "license": "MIT"
+}

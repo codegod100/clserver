@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+
+# CRITICAL: No Server Execution
+
+## ABSOLUTE RESTRICTIONS
+
+**The agent must NEVER run these commands:**
+- `node server.js`
+- `node dynamic-server.js` 
+- `sbcl --script build.lisp`
+- Any server startup commands
+- Any build commands
+- Any testing commands
+
+## What the Agent CAN Do
+
+- Edit Lisp source files only
+- Modify `.lisp` files in the project
+- Update configuration files if needed
+- Provide code suggestions and fixes
+- **Use SBCL to validate Lisp syntax** before making changes
+- Test syntax with `sbcl --eval` commands
+
+## What the Agent CANNOT Do
+
+- Run servers
+- Execute build scripts
+- Test endpoints
+- Start any Node.js processes
+- Run any terminal commands that execute code
+
+## User Responsibility
+
+The user handles ALL:
+- Server execution (`node server.js`)
+- Building (`sbcl --script build.lisp`)
+- Testing (`curl` commands)
+- Process management
+
+**This rule is CRITICAL and must be followed at all times.**

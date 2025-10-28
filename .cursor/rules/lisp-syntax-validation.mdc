@@ -1,0 +1,54 @@
+---
+globs: *.lisp
+---
+
+# Lisp Syntax Validation Guidelines
+
+## Critical: Always Validate Lisp Syntax
+
+**NEVER edit Lisp files without syntax validation!**
+
+## Validation Commands
+
+### Before Making Changes
+```bash
+# Test if file loads correctly
+sbcl --eval "(load \"servers.lisp\")"
+
+# Test specific function
+sbcl --eval "(load \"servers.lisp\") (in-package :clserver) (generate-server)"
+```
+
+### After Making Changes
+```bash
+# Validate entire file
+sbcl --eval "(load \"servers.lisp\")"
+
+# Test build process
+sbcl --script build.lisp
+```
+
+## Common Syntax Errors to Avoid
+
+- **Unbalanced parentheses**: Use SBCL to catch these
+- **Missing quotes**: SBCL will report read errors
+- **Invalid Parenscript syntax**: Test with `(ps ...)` evaluation
+- **Package issues**: Ensure `(in-package #:clserver)` is correct
+
+## Best Practices
+
+1. **Always test syntax** before committing changes
+2. **Use SBCL's error messages** to fix issues
+3. **Validate Parenscript generation** with test builds
+4. **Check parentheses balance** with SBCL loading
+5. **Test function definitions** individually
+
+## Error Prevention
+
+- Use SBCL's built-in syntax checking
+- Test Parenscript macros with simple examples
+- Validate package imports and exports
+- Check function parameter lists
+- Ensure proper macro usage
+
+**Remember: SBCL is your friend for catching Lisp syntax errors!**

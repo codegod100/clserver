@@ -1,0 +1,44 @@
+---
+description: Build process and development workflow
+---
+
+# Build Process and Development Workflow
+
+## Build Commands (User Executed)
+
+- **Generate all servers**: `sbcl --script build.lisp`
+- **Run basic server**: `node server.js`
+- **Run dynamic server**: `node dynamic-server.js`
+
+## Development Workflow
+
+1. **Agent**: Edit Lisp source files ([servers.lisp](mdc:servers.lisp), [package.lisp](mdc:package.lisp))
+2. **User**: Run build script to regenerate JavaScript
+3. **User**: Test the generated servers
+4. Repeat as needed
+
+## Agent Restrictions
+
+- **NEVER run servers**: Agent must NEVER run `node server.js` or any server commands
+- **NEVER run builds**: Agent must NEVER run `sbcl --script build.lisp` or build commands
+- **File editing only**: Agent focuses ONLY on code modifications in Lisp files
+- **User handles execution**: All testing, building, and server management is user responsibility
+
+## Dependencies
+
+- **Common Lisp**: SBCL or similar implementation
+- **Parenscript**: Loaded via Quicklisp
+- **Node.js**: For running generated servers
+
+## Build Output
+
+The build process generates:
+- `server.js` - Basic HTTP server (port 3000)
+- `dynamic-server.js` - Dynamic server with routing (port 3001)
+
+## Testing Endpoints
+
+- Basic: `http://localhost:3000`
+- User profiles: `http://localhost:3001/user/{username}`
+- Blog posts: `http://localhost:3001/post/{id}`
+- API stats: `http://localhost:3001/api/stats`

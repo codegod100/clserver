@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Project Structure Guide
+
+This is a Parenscript web server project that generates Node.js servers from Common Lisp code.
+
+## Key Files
+
+- [servers.lisp](mdc:servers.lisp) - Main Parenscript code that generates both basic and dynamic Node.js servers
+- [build.lisp](mdc:build.lisp) - Build script that loads dependencies and generates all servers
+- [package.lisp](mdc:package.lisp) - Package definition for the clserver package
+- [package.json](mdc:package.json) - Node.js package configuration for the generated servers
+- [server.js](mdc:server.js) - Generated basic Node.js server (port 3000)
+- [dynamic-server.js](mdc:dynamic-server.js) - Generated dynamic Node.js server with routing (port 3001)
+
+## Build Process
+
+1. Run `sbcl --script build.lisp` to generate JavaScript from Lisp
+2. Generated files: `server.js` and `dynamic-server.js`
+3. **Manual execution**: User runs servers manually with `node server.js` or `node dynamic-server.js`
+
+## Agent Guidelines
+
+- **File editing only**: Agent should only edit Lisp source files
+- **No server execution**: Agent should NEVER run `node server.js` or any server commands
+- **No build execution**: Agent should not run `sbcl --script build.lisp` or build commands
+- **User responsibility**: User handles all server execution, building, and testing
+
+## Architecture
+
+- **Code Generation**: Parenscript macros generate JavaScript from Common Lisp
+- **Dual Servers**: Basic server (port 3000) and dynamic server with routing (port 3001)
+- **HTTP Handling**: Complete web server functionality with HTML responses

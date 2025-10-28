@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Dynamic Server{% endblock %}
+
+{% block content %}
+<h1>🚀 Dynamic Parenscript Server</h1>
+<p>Visitor count: {{ visitor_count }}</p>
+
+<h2>Dynamic Routes:</h2>
+<div class="route">
+    <a href="/user/alice">👤 /user/alice</a> - User profile
+</div>
+<div class="route">
+    <a href="/user/bob">👤 /user/bob</a> - Another user
+</div>
+<div class="route">
+    <a href="/post/123">📝 /post/123</a> - Blog post
+</div>
+<div class="route">
+    <a href="/post/456">📝 /post/456</a> - Another post
+</div>
+<div class="route">
+    <a href="/api/stats">📊 /api/stats</a> - Server statistics
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+---
+globs: *.js
+---
+
+# Generated JavaScript Guidelines
+
+## File Types
+
+- `server.js` - Basic HTTP server on port 3000
+- `dynamic-server.js` - Dynamic server with routing on port 3001
+
+## Important Notes
+
+- These files are **GENERATED** - do not edit them directly
+- Always regenerate using `sbcl --script build.lisp`
+- Changes should be made in [servers.lisp](mdc:servers.lisp) source file
+
+## Generated Code Patterns
+
+- Uses Node.js `http` module for server creation
+- Implements proper HTTP status codes and content types
+- Includes HTML generation with inline CSS styling
+- Uses URL parsing for dynamic routing
+- Implements JSON responses for API endpoints
+
+## Testing (User Executed)
+
+- Basic server: `curl http://localhost:3000`
+- Dynamic routes: `curl http://localhost:3001/user/alice`
+- API endpoint: `curl http://localhost:3001/api/stats`
+
+## Agent Guidelines
+
+- **NEVER run servers**: Agent must NEVER run `node server.js` or any server commands
+- **NEVER test servers**: Agent should not run curl commands or test servers
+- **File editing only**: Agent modifies Lisp source files only
+- **User testing**: All server testing and execution is handled by the user
