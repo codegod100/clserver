@@ -10,3 +10,5 @@ pnpm-lock.yaml
 
 # Test output files
 test_output.html
+
+.wrangler

@@ -72,7 +72,7 @@ function handlePost(postId) {
     });
 };
 function handleApiStats() {
-    var jsonResponse = '{\"visitor-count\":' + VISITORCOUNT + ',\"server\":\"Parenscript Cloudflare Worker\"' + ',\"timestamp\":' + date.now() + '}';
+    var jsonResponse = '{\"visitor-count\":' + VISITORCOUNT + ',\"server\":\"Parenscript Cloudflare Worker\"' + ',\"timestamp\":' + self['Date'].now() + '}';
     __PS_MV_REG = [];
     return sendJson(jsonResponse);
 };

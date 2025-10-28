@@ -71,7 +71,7 @@
                  (defun handle-api-stats ()
                    (let ((json-response (+ "{\"visitor-count\":" *visitor-count* 
                                            ",\"server\":\"Parenscript Cloudflare Worker\""
-                                           ",\"timestamp\":" (funcall (@ Date now)) "}")))
+                                           ",\"timestamp\":" (funcall (@ self "Date" now)) "}")))
                      (send-json json-response)))
                  
                  (defun handle-request (request)
