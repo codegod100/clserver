@@ -1,0 +1,12 @@
+# Generated JavaScript files
+server.js
+dynamic-server.js
+
+# Node.js dependencies
+node_modules/
+
+# Package manager lock files
+pnpm-lock.yaml
+
+# Test output files
+test_output.html
