@@ -1,13 +1,17 @@
 {
-  "name": "parenscript-web-server",
+  "name": "parenscript-cloudflare-worker",
   "version": "1.0.0",
-  "description": "A dynamic Node.js web server with routing generated using Parenscript from Common Lisp",
-  "main": "server.js",
+  "description": "A dynamic Cloudflare Worker with routing generated using Parenscript from Common Lisp",
+  "main": "worker.js",
   "scripts": {
-    "start": "node server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "build": "sbcl --script build.lisp"
   },
-  "keywords": ["parenscript", "web-server", "nodejs", "common-lisp", "code-generation", "routing", "dynamic"],
+  "keywords": ["parenscript", "cloudflare-worker", "common-lisp", "code-generation", "routing", "dynamic"],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
 }

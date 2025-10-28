@@ -1,0 +1,14 @@
+name = "parenscript-worker"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Serve static assets
+[assets]
+directory = "assets"
+binding = "ASSETS"
+
+[env.production]
+name = "parenscript-worker"
+
+[env.staging]
+name = "parenscript-worker-staging"

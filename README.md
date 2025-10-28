@@ -1,81 +1,89 @@
-# Parenscript Web Server
+# Parenscript Cloudflare Worker
 
-A Node.js web server generated entirely using Parenscript from Common Lisp code. This demonstrates how Parenscript can be used to generate complete JavaScript applications, including server-side code.
+A dynamic Cloudflare Worker with routing generated using Parenscript from Common Lisp.
 
 ## Features
 
-- **Complete Node.js Server**: Generated entirely from Parenscript
-- **HTTP Server**: Handles HTTP requests and responses
-- **HTML Content**: Serves web pages with proper headers
-- **Build System**: Automated generation from Lisp code
-
-## Dependencies
-
-- **Parenscript**: For JavaScript generation
-- **Node.js**: To run the generated server
-- **Common Lisp**: SBCL or similar implementation
-
-## Quick Start
-
-1. **Install Dependencies**:
-   ```bash
-   # Install Node.js (if not already installed)
-   # Install Quicklisp and Parenscript in your Lisp environment
-   ```
-
-2. **Generate the Server**:
-   ```bash
-   sbcl --script build.lisp
-   ```
-
-3. **Run the Server**:
-   ```bash
-   node server.js
-   ```
-
-4. **Visit the Application**:
-   Open your browser and go to `http://localhost:3000`
+- **Dynamic Routing**: Handles `/user/{username}`, `/post/{id}`, and API endpoints
+- **Static Assets**: Serves HTML templates as static assets for better performance
+- **Template Processing**: Simple string substitution for dynamic content
+- **Code Generation**: Generates JavaScript from Common Lisp using Parenscript
+- **Cloudflare Workers**: Runs on Cloudflare's edge network for global performance
 
 ## Project Structure
 
-- `servers.lisp` - Parenscript code that generates both servers
-- `build.lisp` - Single build script to generate all JavaScript
-- `package.lisp` - Package definition
-- `server.js` - Generated basic Node.js server (created by build)
-- `dynamic-server.js` - Generated dynamic Node.js server (created by build)
-- `README.md` - This documentation
+- `servers.lisp` - Main Parenscript code that generates the Cloudflare Worker
+- `build.lisp` - Build script that loads dependencies and generates the worker
+- `package.lisp` - Package definition for the clserver package
+- `wrangler.toml` - Cloudflare Worker configuration
+- `package.json` - Node.js package configuration
+- `worker.js` - Generated Cloudflare Worker (created by build)
+- `assets/` - Static HTML templates served as assets
 
-## How it Works
+## Development
 
-1. **Parenscript Generation**: Common Lisp code using Parenscript macros generates JavaScript
-2. **Node.js Server**: The generated JavaScript creates a complete HTTP server
-3. **HTTP Handling**: Server responds to requests with HTML content
-4. **Build Process**: Automated generation from Lisp source
+### Prerequisites
 
-## Example Usage
+- Common Lisp (SBCL recommended)
+- Quicklisp
+- Node.js and npm/pnpm
+- Cloudflare account (for deployment)
 
-```lisp
-;; Generate all servers
-(build-all)
+### Setup
 
-;; Or generate individually
-(generate-basic-server)
-(generate-dynamic-server)
+1. Install dependencies:
+```bash
+pnpm install
 ```
 
-## Building
-
-Simply run the build script:
+2. Build the worker:
 ```bash
 sbcl --script build.lisp
 ```
 
-This will generate `server.js` which you can then run with Node.js.
+3. Run locally:
+```bash
+pnpm run dev
+```
+
+### Deployment
+
+1. Install Wrangler CLI:
+```bash
+npm install -g wrangler
+```
+
+2. Login to Cloudflare:
+```bash
+wrangler login
+```
+
+3. Deploy:
+```bash
+pnpm run deploy
+```
+
+## Routes
+
+- `/` - Home page with visitor counter
+- `/user/{username}` - User profile page
+- `/post/{id}` - Blog post page
+- `/api/stats` - JSON API with statistics
 
 ## Architecture
 
-The project demonstrates:
-- **Code Generation**: Using Parenscript to generate JavaScript from Lisp
-- **Server-side JavaScript**: Creating Node.js applications with Parenscript
-- **HTTP Server**: Complete web server functionality
-- **Build Automation**: Simple build process for code generation
+- **Code Generation**: Parenscript macros generate JavaScript from Common Lisp
+- **Static Assets**: HTML templates served as static assets for optimal performance
+- **Template Processing**: Simple string substitution for dynamic content
+- **Edge Computing**: Runs on Cloudflare's global network
+- **Serverless**: No server management required
+
+## Build Process
+
+1. Run `sbcl --script build.lisp` to generate JavaScript from Lisp
+2. Generated file: `worker.js`
+3. Deploy with `wrangler deploy` or test locally with `wrangler dev`
+
+## License
+
+MIT

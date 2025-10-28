@@ -14,15 +14,18 @@
 
 (in-package :clserver)
 
-(format t "Building Parenscript Web Server...~%")
+(format t "Building Parenscript Cloudflare Worker...~%")
 
-;; Build the server
+;; Build the worker
 (build-all)
 
 (format t "~%Build complete!~%")
-(format t "Server:          node server.js~%")
-(format t "~%Test with:~%")
-(format t "  curl http://localhost:3000~%")
-(format t "  curl http://localhost:3000/user/alice~%")
-(format t "  curl http://localhost:3000/post/123~%")
-(format t "  curl http://localhost:3000/api/stats~%")
+(format t "Worker:           worker.js~%")
+(format t "~%Deploy with:~%")
+(format t "  wrangler dev     # Local development~%")
+(format t "  wrangler deploy  # Deploy to Cloudflare~%")
+(format t "~%Test routes:~%")
+(format t "  /                # Home page~%")
+(format t "  /user/alice      # User profile~%")
+(format t "  /post/123        # Blog post~%")
+(format t "  /api/stats       # API statistics~%")
