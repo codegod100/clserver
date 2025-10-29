@@ -95,7 +95,7 @@
                       "<div class=\"container\">"
                       "<h1>{{header}}</h1>"
                       "{{stats-section}}"
-                      "{{api-endpoints-section}}"
+                     "{{api-endpoints-section}}"
                       "{{try-it-out-section}}"
                       "{{about-section}}"
                       "</div>"
@@ -128,7 +128,14 @@
                       ".delete { background: #f8d7da; color: #721c24; }"
                       ".url { font-family: monospace; color: #007acc; }"
                       ".description { color: #666; margin-top: 5px; }"
-                      ".example { background: #f1f3f4; padding: 10px; border-radius: 3px; margin-top: 10px; font-family: monospace; font-size: 12px; }"))
+                      ".example { background: #f1f3f4; padding: 10px; border-radius: 3px; margin-top: 10px; font-family: monospace; font-size: 12px; }"
+                      "#ajax-result { background: #0b1021; color: #e3e7ff; padding: 12px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; overflow-x: auto; }"
+                      ".btn { display: inline-block; margin: 6px 8px 6px 0; padding: 8px 12px; border-radius: 6px; border: 0; cursor: pointer; font-weight: 600; }"
+                      ".btn.get { background: #d4edda; color: #155724; }"
+                      ".btn.post { background: #cce5ff; color: #004085; }"
+                      ".btn.put { background: #fff3cd; color: #856404; }"
+                      ".btn.delete { background: #f8d7da; color: #721c24; }"
+                      ".hint { color: #666; font-size: 12px; margin-top: 6px; }"))
                  
                  (defun render-stats-section (data)
                    "Render the server stats section"
@@ -139,29 +146,55 @@
                       "<p><strong>Status:</strong> <span style=\"color: green;\">✅ Online</span></p>"
                       "</div>"))
                  
-                 (defun render-api-endpoints-section (data)
-                   "Render the API endpoints section"
-                   (let ((origin (@ data "origin")))
-                     (+ "<div class=\"api-section\">"
-                        "<h2>🔗 Available API Endpoints</h2>"
-                        (render-api-endpoint "GET" "/api/stats" "Get server statistics and visitor count" (+ "curl " origin "/api/stats"))
-                        (render-api-endpoint "GET" "/api/work" "Process work and return timing information" (+ "curl " origin "/api/work"))
-                        (render-api-endpoint "GET" "/api/users" "List all users" (+ "curl " origin "/api/users"))
-                        (render-api-endpoint "POST" "/api/users" "Create a new user" (+ "curl -X POST " origin "/api/users -H \"Content-Type: application/json\" -d '{\"name\":\"John Doe\",\"email\":\"john@example.com\"}'"))
-                        (render-api-endpoint "GET" "/api/users/:id" "Get a specific user by ID" (+ "curl " origin "/api/users/1"))
-                        (render-api-endpoint "PUT" "/api/users/:id" "Update a user by ID" (+ "curl -X PUT " origin "/api/users/1 -H \"Content-Type: application/json\" -d '{\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}'"))
-                        (render-api-endpoint "DELETE" "/api/users/:id" "Delete a user by ID" (+ "curl -X DELETE " origin "/api/users/1"))
-                        "</div>")))
+                (defun render-api-endpoints-section (data)
+                  "Render the API endpoints section with inline AJAX demo buttons"
+                  (let ((origin (@ data "origin")))
+                    (+ "<div class=\"api-section\">"
+                       "<h2>🔗 Available API Endpoints</h2>"
+                       (render-api-endpoint "GET" "/api/stats" "Get server statistics and visitor count" (+ "curl " origin "/api/stats") origin "")
+                       (render-api-endpoint "GET" "/api/work" "Process work and return timing information" (+ "curl " origin "/api/work") origin "")
+                       (render-api-endpoint "GET" "/api/users" "List all users" (+ "curl " origin "/api/users") origin "")
+                       (render-api-endpoint "POST" "/api/users" "Create a new user" (+ "curl -X POST " origin "/api/users -H \"Content-Type: application/json\" -d '{\"name\":\"John Doe\",\"email\":\"john@example.com\"}'") origin "{name:'John Doe',email:'john@example.com'}")
+                       (render-api-endpoint "GET" "/api/users/:id" "Get a specific user by ID" (+ "curl " origin "/api/users/1") origin "")
+                       (render-api-endpoint "PUT" "/api/users/:id" "Update a user by ID" (+ "curl -X PUT " origin "/api/users/1 -H \"Content-Type: application/json\" -d '{\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}'") origin "{name:'Jane Doe',email:'jane@example.com'}")
+                       (render-api-endpoint "DELETE" "/api/users/:id" "Delete a user by ID" (+ "curl -X DELETE " origin "/api/users/1") origin "")
+                       "<h3>Response</h3>"
+                       "<div id=\"ajax-result\" class=\"example\">(no request yet)</div>"
+                      "<script>"
+                      "async function demoFetch(method, url, body, targetId){"
+                       "  try {"
+                       "    const opts = { method, headers: {} };"
+                       "    if (body && Object.keys(body).length) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }"
+                       "    console.log('Fetching:', method, url, body || '');"
+                       "    const res = await fetch(url, opts);"
+                       "    const text = await res.text();"
+                       "    let json; try { json = JSON.parse(text); } catch(e) { json = { raw: text }; }"
+                       "    const pretty = JSON.stringify(json, null, 2);"
+                      "    const el = document.getElementById(targetId);"
+                      "    if (el) { el.style.display = 'block'; el.textContent = pretty; }"
+                       "  } catch (e) {"
+                      "    const el = document.getElementById(targetId); if (el) { el.style.display = 'block'; el.textContent = 'Error: ' + (e && e.message ? e.message : e); }"
+                       "  }"
+                       "}"
+                       "</script>"
+                       "</div>")))
                  
-                 (defun render-api-endpoint (method path description example)
-                   "Render a single API endpoint"
-                   (let ((method-lower (funcall (@ method "toLowerCase"))))
-                     (+ "<div class=\"api-endpoint\">"
-                        "<span class=\"method " method-lower "\">" method "</span>"
-                        "<span class=\"url\">" path "</span>"
-                        "<div class=\"description\">" description "</div>"
-                        "<div class=\"example\">" example "</div>"
-                        "</div>")))
+               (defun render-api-endpoint (method path description example origin body-js)
+                 "Render a single API endpoint with an inline AJAX demo button and its own response container"
+                 (let ((method-lower (funcall (@ method "toLowerCase")))
+                       (full-url (+ origin path))
+                       (body-arg (if (> (@ body-js length) 0) body-js "null"))
+                       (sanitized (funcall (@ (funcall (@ (funcall (@ path "toLowerCase")) replace) (new ((@ self "RegExp") "[^a-z0-9]+" "g")) "-") replace) (new ((@ self "RegExp") "^-|-$" "g")) ""))
+                       (resp-id ""))
+                   (setf resp-id (+ "ajax-result-" method-lower "-" sanitized))
+                   (+ "<div class=\"api-endpoint\">"
+                      "<span class=\"method " method-lower "\">" method "</span>"
+                      "<span class=\"url\">" path "</span>"
+                      "<div class=\"description\">" description "</div>"
+                      "<div class=\"example\">" example "</div>"
+                      "<div><button class=\"btn " method-lower "\" onclick=\"demoFetch('" method "','" full-url "', " body-arg ", '" resp-id "')\">Try</button></div>"
+                      "<div class=\"example\" id=\"" resp-id "\" style=\"display:none\"></div>"
+                      "</div>")))
                  
                  (defun render-try-it-out-section ()
                    "Render the try it out section"
@@ -174,6 +207,8 @@
                       "<li><a href=\"/api/users\" target=\"_blank\">/api/users</a> - List users</li>"
                       "</ul>"
                       "</div>"))
+
+                ;; Removed separate AJAX demo section; buttons are now inline per endpoint
                  
                  (defun render-about-section ()
                    "Render the about section"

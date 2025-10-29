@@ -17,6 +17,16 @@ description: Build process and development workflow
 3. **User**: Test the generated servers
 4. Repeat as needed
 
+## Post-Edit: Build Reminder
+
+- After any change to `.lisp` source files, the **User should run**:
+
+  ```bash
+  sbcl --script build.lisp
+  ```
+
+  This regenerates the output (e.g., `worker.js`, `server.js`, `dynamic-server.js`) so the changes take effect.
+
 ## Agent Restrictions
 
 - **NEVER run servers**: Agent must NEVER run `node server.js` or any server commands
