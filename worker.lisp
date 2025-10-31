@@ -491,6 +491,7 @@
                               "}")))
                  (format nil "~{~A~%~}" lines)))
          (module-js (let ((lines (list
+                                  "var __PS_MV_REG = [];"
                                   helpers-js
                                   do-js
                                   "export default {"
