@@ -419,12 +419,18 @@
   )
   "Parenscript forms that define the Cloudflare Worker runtime.")
 (defun generate-worker ()
-  (let* ((body (append +worker-runtime-definitions+
+  (let* ((forms (mapcar (lambda (f)
+                          (if (and (consp f) (eq (car f) 'quote))
+                              (cadr f)
+                              f))
+                        +worker-runtime-definitions+))
+         (body (append forms
                        (list '(funcall (@ self "addEventListener") "fetch"
                                        (lambda (event)
                                          (funcall (@ event "respondWith")
                                                   (handle-request (@ event request))))))))
-         (js-code (ps `(progn ,@body))))
+         (program (cons 'progn body))
+         (js-code (ps* program)))
     (with-open-file (stream "worker.js" :direction :output :if-exists :supersede)
       (write-string js-code stream))
     (format t "Generated worker.js successfully!~%")))
