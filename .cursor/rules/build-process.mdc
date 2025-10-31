@@ -27,12 +27,6 @@ description: Build process and development workflow
 
   This regenerates the output (e.g., `worker.js`, `server.js`, `dynamic-server.js`) so the changes take effect.
 
-## Agent Restrictions
-
-- **NEVER run servers**: Agent must NEVER run `node server.js` or any server commands
-- **NEVER run builds**: Agent must NEVER run `sbcl --script build.lisp` or build commands
-- **File editing only**: Agent focuses ONLY on code modifications in Lisp files
-- **User handles execution**: All testing, building, and server management is user responsibility
 
 ## Dependencies
 
