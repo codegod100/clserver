@@ -46,6 +46,11 @@
 (defparameter +worker-form-visitor-count+
   '(defvar *visitor-count* 0)
 )
+(defparameter +worker-form-users-db+
+  '(defvar *users* (array (create :id 1 :name "Alice" :email "alice@example.com")
+                          (create :id 2 :name "Bob" :email "bob@example.com")
+                          (create :id 3 :name "Charlie" :email "charlie@example.com")))
+)
 (defparameter +worker-form-send-html+
   '(defun send-html (html)
             (new ((@ self "Response") html
@@ -255,19 +260,17 @@
 )
 (defparameter +worker-form-list-users+
   '(defun list-users (request params body)
-            (let ((users (list (create :id 1 :name "Alice" :email "alice@example.com")
-                               (create :id 2 :name "Bob" :email "bob@example.com")
-                               (create :id 3 :name "Charlie" :email "charlie@example.com"))))
-              (create :users users :count (@ users length) :status "success")))
+            (create :users *users* :count (@ *users* length) :status "success"))
 )
 (defparameter +worker-form-create-user+
   '(defun create-user (request params body)
             (if body
                 (let ((new-user (create :id (+ 1 (funcall (@ self "Math" floor)
-                                                          (* (funcall (@ self "Math" random)) 1000)))
+                                                          (* (funcall (@ self "Math" random)) 100000)))
                                         :name (@ body "name")
                                         :email (@ body "email")
                                         :created-at (funcall (@ self "Date" now)))))
+                  (funcall (@ *users* push) new-user)
                   (create :user new-user :status "created"))
                 (create :error "Missing user data" :status "error")))
 )
@@ -275,29 +278,38 @@
   '(defun get-user (request params body)
             (let ((user-id (@ params "id")))
               (if user-id
-                  (let ((user (create :id (funcall (@ self "parseInt") user-id)
-                                      :name "Sample User"
-                                      :email "user@example.com"
-                                      :created-at (funcall (@ self "Date" now)))))
-                    (create :user user :status "success"))
+                  (let* ((id (funcall (@ self "parseInt") user-id))
+                         (user (chain *users* (find (lambda (u) (= (@ u "id") id))))))
+                    (if user
+                        (create :user user :status "success")
+                        (create :error "User not found" :status "error")))
                   (create :error "User ID required" :status "error"))))
 )
 (defparameter +worker-form-update-user+
   '(defun update-user (request params body)
             (let ((user-id (@ params "id")))
               (if (and user-id body)
-                  (let ((updated-user (create :id (funcall (@ self "parseInt") user-id)
-                                              :name (@ body "name")
-                                              :email (@ body "email")
-                                              :updated-at (funcall (@ self "Date" now)))))
-                    (create :user updated-user :status "updated"))
+                  (let* ((id (funcall (@ self "parseInt") user-id))
+                         (idx (chain *users* (findIndex (lambda (u) (= (@ u "id") id))))))
+                    (if (>= idx 0)
+                        (let ((existing (aref *users* idx)))
+                          (when (@ body "name") (setf (@ existing "name") (@ body "name")))
+                          (when (@ body "email") (setf (@ existing "email") (@ body "email")))
+                          (setf (@ existing "updated-at") (funcall (@ self "Date" now)))
+                          (create :user existing :status "updated"))
+                        (create :error "User not found" :status "error")))
                   (create :error "User ID and data required" :status "error"))))
 )
 (defparameter +worker-form-delete-user+
   '(defun delete-user (request params body)
             (let ((user-id (@ params "id")))
               (if user-id
-                  (create :message (+ "User " user-id " deleted") :status "deleted")
+                  (let* ((id (funcall (@ self "parseInt") user-id))
+                         (before (@ *users* length)))
+                    (setf *users* (chain *users* (filter (lambda (u) (!= (@ u "id") id)))))
+                    (if (< (@ *users* length) before)
+                        (create :message (+ "User " user-id " deleted") :status "deleted")
+                        (create :error "User not found" :status "error")))
                   (create :error "User ID required" :status "error"))))
 )
 (defparameter +worker-form-process-work+
@@ -390,6 +402,7 @@
 (defparameter +worker-runtime-definitions+
   (list
     +worker-form-visitor-count+
+    +worker-form-users-db+
     +worker-form-send-html+
     +worker-form-send-json+
     +worker-form-send-error+
@@ -424,15 +437,76 @@
                               (cadr f)
                               f))
                         +worker-runtime-definitions+))
-         (body (append forms
-                       (list '(funcall (@ self "addEventListener") "fetch"
-                                       (lambda (event)
-                                         (funcall (@ event "respondWith")
-                                                  (handle-request (@ event request))))))))
-         (program (cons 'progn body))
-         (js-code (ps* program)))
+         (helpers-js (ps* `(progn ,@forms)))
+         (do-js (let ((lines (list
+                              "export class UserDO {"
+                              "  constructor(state, env){ this.state = state; this.env = env; }"
+                              "  async fetch(request){"
+                              "    const url = new URL(request.url);"
+                              "    const method = request.method;"
+                              "    const storage = this.state.storage;"
+                              "    const send = (obj, status=200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });"
+                              "    const readUsers = async () => (await storage.get('users')) || [];"
+                              "    const writeUsers = async (users) => { await storage.put('users', users); };"
+                              "    try {"
+                              "      if (method === 'GET' && url.pathname === '/api/users') {"
+                              "        const users = await readUsers();"
+                              "        return send({ users, count: users.length, status: 'success' });"
+                              "      }"
+                              "      if (method === 'POST' && url.pathname === '/api/users') {"
+                              "        const body = await request.json();"
+                              "        const users = await readUsers();"
+                              "        const id = Math.floor(Math.random() * 100000) + 1;"
+                              "        const user = { id, name: body && body.name, email: body && body.email, created_at: Date.now() };"
+                              "        users.push(user); await writeUsers(users);"
+                              "        return send({ user, status: 'created' });"
+                              "      }"
+                              "      if (url.pathname.startsWith('/api/users/')) {"
+                              "        const id = parseInt(url.pathname.slice('/api/users/'.length));"
+                              "        const users = await readUsers();"
+                              "        const idx = users.findIndex(u => u.id === id);"
+                              "        if (idx < 0) return send({ error: 'User not found', status: 'error' }, 404);"
+                              "        if (method === 'GET') {"
+                              "          return send({ user: users[idx], status: 'success' });"
+                              "        }"
+                              "        if (method === 'PUT') {"
+                              "          const body = await request.json();"
+                              "          const u = users[idx];"
+                              "          if (body && body.name) u.name = body.name;"
+                              "          if (body && body.email) u.email = body.email;"
+                              "          u.updated_at = Date.now();"
+                              "          await writeUsers(users);"
+                              "          return send({ user: u, status: 'updated' });"
+                              "        }"
+                              "        if (method === 'DELETE') {"
+                              "          users.splice(idx, 1); await writeUsers(users);"
+                              "          return send({ message: 'User ' + id + ' deleted', status: 'deleted' });"
+                              "        }"
+                              "      }"
+                              "      return send({ error: 'Unsupported DO route', status: 'error' }, 404);"
+                              "    } catch (e) {"
+                              "      return send({ error: e && e.message ? e.message : String(e), status: 'error' }, 500);"
+                              "    }"
+                              "  }"
+                              "}")))
+                 (format nil "~{~A~%~}" lines)))
+         (module-js (let ((lines (list
+                                  helpers-js
+                                  do-js
+                                  "export default {"
+                                  "  async fetch(request, env, ctx){"
+                                  "    const url = new URL(request.url);"
+                                  "    if (url.pathname.startsWith('/api/users')) {"
+                                  "      const id = env.USER_DO.idFromName('users');"
+                                  "      const stub = env.USER_DO.get(id);"
+                                  "      return stub.fetch(request);"
+                                  "    }"
+                                  "    return await handleRequest(request);"
+                                  "  }"
+                                  "}")))
+                      (format nil "~{~A~%~}" lines))))
     (with-open-file (stream "worker.js" :direction :output :if-exists :supersede)
-      (write-string js-code stream))
+      (write-string module-js stream))
     (format t "Generated worker.js successfully!~%")))
 
 (defun build-all ()
